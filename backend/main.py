@@ -417,6 +417,10 @@ def broadcast_history(db: Session = Depends(get_db), _=Depends(require_admin)):
 def health():
     return {"status": "ok"}
 
+@app.head("/health")
+def health_head():
+    return {}
+
 
 # ---------------------------------------------------------------------------
 # Serve dashboard (must be last — catches all unmatched routes)
