@@ -1,0 +1,51 @@
+services:
+  # ── Backend API + Dashboard ──────────────────────────────────────────────
+  - type: web
+    name: school-bot-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: school-bot-db
+          property: connectionString
+      - key: API_BASE_URL
+        sync: false          # set manually in Render dashboard after deploy
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: API_SECRET_KEY
+        generateValue: true  # Render auto-generates a secure random value
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SCHOOL_NAME
+        sync: false
+    disk:
+      name: uploads
+      mountPath: /opt/render/project/src/uploads
+      sizeGB: 1
+
+  # ── Telegram Bot (background worker) ────────────────────────────────────
+  - type: worker
+    name: school-bot-worker
+    runtime: python
+    rootDir: bot
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: API_BASE_URL
+        sync: false          # must match the web service URL above
+      - key: SCHOOL_NAME
+        sync: false
+
+# ── PostgreSQL Database ──────────────────────────────────────────────────
+databases:
+  - name: school-bot-db
+    databaseName: schoolbot
+    user: schoolbot
+    plan: free
