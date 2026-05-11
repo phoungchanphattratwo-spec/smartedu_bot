@@ -6,11 +6,17 @@ from dotenv import load_dotenv
 load_dotenv()
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env"), override=True)
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./school.db")
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 
-# Render provides postgres:// but SQLAlchemy requires postgresql://
+# Render provides postgres:// — SQLAlchemy requires postgresql://
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+# Fall back to SQLite if no DATABASE_URL is set
+if not DATABASE_URL or DATABASE_URL.startswith("http"):
+    DATABASE_URL = "sqlite:///./school.db"
+
+print(f"[DB] Using: {DATABASE_URL[:30]}...")
 
 engine = create_engine(
     DATABASE_URL,
