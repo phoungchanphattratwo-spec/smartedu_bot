@@ -55,6 +55,7 @@ class Subscriber(Base):
     username = Column(String(100), nullable=True)
     is_active = Column(Boolean, default=True)
     class_code = Column(String(20), nullable=True)   # child's registered class
+    language = Column(String(5), default="en", nullable=False)  # "en" or "km"
     subscribed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 

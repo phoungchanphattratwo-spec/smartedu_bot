@@ -393,6 +393,26 @@ def set_subscriber_class(
     return sub
 
 
+@app.patch("/api/subscribers/{telegram_id}/language", response_model=schemas.SubscriberOut)
+def set_subscriber_language(
+    telegram_id: str,
+    payload: schemas.SubscriberSetLanguage,
+    db: Session = Depends(get_db),
+):
+    """Called by the bot when a parent selects or changes their language."""
+    if payload.language not in ("en", "km"):
+        raise HTTPException(status_code=400, detail="Language must be 'en' or 'km'")
+    sub = db.query(models.Subscriber).filter(
+        models.Subscriber.telegram_id == telegram_id
+    ).first()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Subscriber not found")
+    sub.language = payload.language
+    db.commit()
+    db.refresh(sub)
+    return sub
+
+
 # ---------------------------------------------------------------------------
 # Broadcast
 # ---------------------------------------------------------------------------

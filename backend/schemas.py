@@ -87,6 +87,7 @@ class SubscriberOut(BaseModel):
     username: Optional[str]
     is_active: bool
     class_code: Optional[str]
+    language: str = "en"
 
     model_config = {"from_attributes": True}
 
@@ -94,6 +95,10 @@ class SubscriberOut(BaseModel):
 class SubscriberSetClass(BaseModel):
     telegram_id: str
     class_code: str
+
+
+class SubscriberSetLanguage(BaseModel):
+    language: str  # "en" or "km"
 
 
 # --- Broadcast ---
