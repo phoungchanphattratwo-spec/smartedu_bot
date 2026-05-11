@@ -7,6 +7,7 @@ import os
 import uuid
 import threading
 import httpx
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -44,7 +45,38 @@ ALLOWED_EXTENSIONS = {
 }
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
 
-app = FastAPI(title="School Bot API", version="1.0.0")
+def run_bot():
+    """Run the Telegram bot in a separate thread alongside the web server."""
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    if not bot_token:
+        print("[BOT] No TELEGRAM_BOT_TOKEN set — bot not started.")
+        return
+
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bot"))
+
+    try:
+        import asyncio
+        import bot as school_bot
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        school_bot.main()
+    except Exception as e:
+        print(f"[BOT] Failed to start: {e}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Start bot thread on startup
+    print("[BOT] Starting Telegram bot thread...")
+    bot_thread = threading.Thread(target=run_bot, daemon=True, name="telegram-bot")
+    bot_thread.start()
+    print("[BOT] Telegram bot thread started.")
+    yield
+    # Shutdown — nothing to clean up, thread is daemon
+
+
+app = FastAPI(title="School Bot API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -445,18 +477,6 @@ def run_bot():
         school_bot.main()
     except Exception as e:
         print(f"[BOT] Failed to start: {e}")
-
-
-@app.on_event("startup")
-async def startup_event():
-    # Only start bot in the first worker process (avoid duplicates with multiple workers)
-    worker_id = os.getenv("RENDER_INSTANCE_ID", "")
-    if worker_id and not worker_id.endswith("-0") and worker_id != "":
-        print(f"[BOT] Skipping bot start on worker {worker_id}")
-        return
-    bot_thread = threading.Thread(target=run_bot, daemon=True, name="telegram-bot")
-    bot_thread.start()
-    print("[BOT] Telegram bot thread started.")
 
 
 # ---------------------------------------------------------------------------
