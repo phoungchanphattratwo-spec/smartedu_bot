@@ -464,6 +464,12 @@ def broadcast_history(db: Session = Depends(get_db), _=Depends(require_admin)):
     ]
 
 
+@app.delete("/api/broadcast/history", status_code=204)
+def clear_broadcast_history(db: Session = Depends(get_db), _=Depends(require_admin)):
+    db.query(models.BroadcastLog).delete()
+    db.commit()
+
+
 # ---------------------------------------------------------------------------
 # Health check
 # ---------------------------------------------------------------------------

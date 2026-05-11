@@ -268,7 +268,13 @@
             <button type="submit" class="btn btn-danger"><svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M18 3a1 1 0 00-1.447-.894L8.763 6H5a3 3 0 000 6h.28l1.771 5.316A1 1 0 008 18h1a1 1 0 001-1v-4.382l6.553 3.276A1 1 0 0018 15V3z" clip-rule="evenodd"/></svg> Send to All Subscribers</button>
           </form>
         </div>
-        <div class="list-header"><h3>Broadcast History</h3></div>
+        <div class="list-header">
+          <h3>Broadcast History</h3>
+          <button class="btn btn-ghost-red btn-sm" onclick="clearBroadcastHistory()">
+            <svg viewBox="0 0 20 20" fill="currentColor" width="13" height="13"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+            Clear History
+          </button>
+        </div>
         <div id="broadcast-history" class="item-list"><div class="skeleton-list"><div class="skeleton"></div><div class="skeleton"></div></div></div>
       </section>
 
@@ -295,9 +301,28 @@
     </main>
   </div>
 
+  <!-- ══════════════════════════════════════════════
+       MODAL (replaces window.confirm / alert)
+  ══════════════════════════════════════════════ -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-icon-wrap" id="modal-icon-wrap">
+        <svg id="modal-icon" viewBox="0 0 24 24" fill="none" width="26" height="26"></svg>
+      </div>
+      <h3 id="modal-title"></h3>
+      <p id="modal-message"></p>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn btn-ghost-cancel">Cancel</button>
+        <button id="modal-confirm" class="btn btn-primary">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATIONS -->
+  <div id="toast-container"></div>
+
   <script src="/static/app.js"></script>
   <script>
-    // Password show/hide toggle
     document.getElementById("toggle-password").addEventListener("click", () => {
       const input = document.getElementById("password");
       input.type = input.type === "password" ? "text" : "password";

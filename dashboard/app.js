@@ -3,8 +3,6 @@
  * Communicates with the FastAPI backend at API_BASE.
  */
 
-// When served via the backend, use relative URLs (works on any domain).
-// When opening index.html directly as a file, fall back to localhost.
 const API_BASE = window.location.protocol === "file:"
   ? "http://localhost:8000"
   : window.location.origin;
@@ -13,6 +11,58 @@ const API_BASE = window.location.protocol === "file:"
 let authToken = localStorage.getItem("token") || null;
 let userRole = localStorage.getItem("role") || null;
 let classes = [];
+
+// ── Modal (replaces window.confirm / alert) ────────────────────────────────
+
+function showModal({ title, message, type = "danger", confirmText = "Confirm", cancelText = "Cancel", onConfirm, onCancel }) {
+  const overlay  = document.getElementById("modal-overlay");
+  const iconWrap = document.getElementById("modal-icon-wrap");
+  const icon     = document.getElementById("modal-icon");
+  const titleEl  = document.getElementById("modal-title");
+  const msgEl    = document.getElementById("modal-message");
+  const confirmBtn = document.getElementById("modal-confirm");
+  const cancelBtn  = document.getElementById("modal-cancel");
+
+  const icons = {
+    danger:  '<path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>',
+    warning: '<path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>',
+    info:    '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>',
+  };
+
+  const btnColors = { danger: "btn-danger", warning: "btn-primary", info: "btn-primary" };
+
+  iconWrap.className = `modal-icon-wrap ${type}`;
+  icon.innerHTML = icons[type] || icons.info;
+  titleEl.textContent = title;
+  msgEl.textContent = message;
+  confirmBtn.textContent = confirmText;
+  confirmBtn.className = `btn ${btnColors[type] || "btn-primary"}`;
+  cancelBtn.textContent = cancelText;
+
+  overlay.classList.remove("hidden");
+
+  const close = () => overlay.classList.add("hidden");
+
+  confirmBtn.onclick = () => { close(); onConfirm && onConfirm(); };
+  cancelBtn.onclick  = () => { close(); onCancel && onCancel(); };
+  overlay.onclick    = (e) => { if (e.target === overlay) { close(); onCancel && onCancel(); } };
+}
+
+// ── Toast notifications ────────────────────────────────────────────────────
+
+function showToast(message, type = "success", duration = 3500) {
+  const container = document.getElementById("toast-container");
+  const icons = {
+    success: '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>',
+    error:   '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>',
+    info:    '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>',
+  };
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">${icons[type]||icons.info}</svg><span>${message}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), duration);
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -235,12 +285,20 @@ document.getElementById("class-form").addEventListener("submit", async (e) => {
 });
 
 async function deleteClass(id) {
-  if (!confirm("Delete this class? All associated homework will also be deleted.")) return;
-  try {
-    await apiFetch(`/api/classes/${id}`, { method: "DELETE" });
-    loadClasses();
-    loadStats();
-  } catch { alert("Error deleting class."); }
+  showModal({
+    title: "Delete Class",
+    message: "This will permanently delete the class and all its homework. This cannot be undone.",
+    type: "danger",
+    confirmText: "Delete",
+    onConfirm: async () => {
+      try {
+        await apiFetch(`/api/classes/${id}`, { method: "DELETE" });
+        showToast("Class deleted.", "success");
+        loadClasses();
+        loadStats();
+      } catch { showToast("Error deleting class.", "error"); }
+    }
+  });
 }
 
 // ── Homework ───────────────────────────────────────────────────────────────
@@ -327,11 +385,19 @@ document.getElementById("homework-form").addEventListener("submit", async (e) =>
 });
 
 async function deleteHomework(id) {
-  if (!confirm("Delete this homework entry?")) return;
-  try {
-    await apiFetch(`/api/homework/${id}`, { method: "DELETE" });
-    loadHomework(document.getElementById("hw-filter-class").value);
-  } catch { alert("Error deleting homework."); }
+  showModal({
+    title: "Delete Homework",
+    message: "This homework entry will be permanently removed.",
+    type: "danger",
+    confirmText: "Delete",
+    onConfirm: async () => {
+      try {
+        await apiFetch(`/api/homework/${id}`, { method: "DELETE" });
+        showToast("Homework deleted.", "success");
+        loadHomework(document.getElementById("hw-filter-class").value);
+      } catch { showToast("Error deleting homework.", "error"); }
+    }
+  });
 }
 
 // ── Holidays ───────────────────────────────────────────────────────────────
@@ -389,11 +455,19 @@ document.getElementById("holiday-form").addEventListener("submit", async (e) => 
 });
 
 async function deleteHoliday(id) {
-  if (!confirm("Delete this holiday?")) return;
-  try {
-    await apiFetch(`/api/holidays/${id}`, { method: "DELETE" });
-    loadHolidays();
-  } catch { alert("Error deleting holiday."); }
+  showModal({
+    title: "Delete Holiday",
+    message: "This holiday will be removed from the schedule.",
+    type: "danger",
+    confirmText: "Delete",
+    onConfirm: async () => {
+      try {
+        await apiFetch(`/api/holidays/${id}`, { method: "DELETE" });
+        showToast("Holiday deleted.", "success");
+        loadHolidays();
+      } catch { showToast("Error deleting holiday.", "error"); }
+    }
+  });
 }
 
 // ── Broadcast ──────────────────────────────────────────────────────────────
@@ -406,29 +480,35 @@ document.getElementById("broadcast-form").addEventListener("submit", async (e) =
   e.preventDefault();
   const message = document.getElementById("bc-message").value.trim();
   if (!message) return;
-  if (!confirm(`Send this message to ALL subscribers?\n\n"${message}"`)) return;
 
-  const btn = e.target.querySelector("button[type=submit]");
-  btn.disabled = true;
-  btn.textContent = "Sending…";
-
-  try {
-    const resp = await apiFetch("/api/broadcast", {
-      method: "POST",
-      body: JSON.stringify({ message }),
-    });
-    const data = await resp.json();
-    if (!resp.ok) { showMsg("bc-msg", data.detail || "Error", "error"); return; }
-    showMsg("bc-msg", `✅ Sent to ${data.sent_to} subscriber(s).`, "success");
-    e.target.reset();
-    document.getElementById("bc-char-count").textContent = "0";
-    loadBroadcastHistory();
-  } catch {
-    showMsg("bc-msg", "Connection error.", "error");
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Send to All Subscribers";
-  }
+  showModal({
+    title: "Send Broadcast",
+    message: `Send this message to ALL subscribers?\n\n"${message.substring(0, 80)}${message.length > 80 ? '…' : ''}"`,
+    type: "warning",
+    confirmText: "Send Now",
+    onConfirm: async () => {
+      const btn = document.querySelector("#broadcast-form button[type=submit]");
+      btn.disabled = true;
+      btn.textContent = "Sending…";
+      try {
+        const resp = await apiFetch("/api/broadcast", {
+          method: "POST",
+          body: JSON.stringify({ message }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) { showToast(data.detail || "Error sending broadcast.", "error"); return; }
+        showToast(`✅ Sent to ${data.sent_to} subscriber(s).`, "success", 5000);
+        e.target.reset();
+        document.getElementById("bc-char-count").textContent = "0";
+        loadBroadcastHistory();
+      } catch {
+        showToast("Connection error.", "error");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Send to All Subscribers";
+      }
+    }
+  });
 });
 
 async function loadBroadcastHistory() {
@@ -458,6 +538,23 @@ async function loadBroadcastHistory() {
   } catch {
     container.innerHTML = '<p class="empty-state">Failed to load history.</p>';
   }
+}
+
+async function clearBroadcastHistory() {
+  showModal({
+    title: "Clear Broadcast History",
+    message: "All broadcast history will be permanently deleted. This cannot be undone.",
+    type: "danger",
+    confirmText: "Clear All",
+    onConfirm: async () => {
+      try {
+        const resp = await apiFetch("/api/broadcast/history", { method: "DELETE" });
+        if (!resp.ok) { showToast("Failed to clear history.", "error"); return; }
+        showToast("Broadcast history cleared.", "success");
+        loadBroadcastHistory();
+      } catch { showToast("Connection error.", "error"); }
+    }
+  });
 }
 
 // ── File drop zone ────────────────────────────────────────────────────────
