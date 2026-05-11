@@ -449,7 +449,12 @@ def run_bot():
 
 @app.on_event("startup")
 async def startup_event():
-    bot_thread = threading.Thread(target=run_bot, daemon=True)
+    # Only start bot in the first worker process (avoid duplicates with multiple workers)
+    worker_id = os.getenv("RENDER_INSTANCE_ID", "")
+    if worker_id and not worker_id.endswith("-0") and worker_id != "":
+        print(f"[BOT] Skipping bot start on worker {worker_id}")
+        return
+    bot_thread = threading.Thread(target=run_bot, daemon=True, name="telegram-bot")
     bot_thread.start()
     print("[BOT] Telegram bot thread started.")
 
