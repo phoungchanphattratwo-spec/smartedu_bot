@@ -67,13 +67,15 @@ def run_bot():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Start bot thread on startup
-    print("[BOT] Starting Telegram bot thread...")
-    bot_thread = threading.Thread(target=run_bot, daemon=True, name="telegram-bot")
-    bot_thread.start()
-    print("[BOT] Telegram bot thread started.")
+    # Only start bot thread if RUN_BOT=true (disabled by default to avoid conflicts)
+    if os.getenv("RUN_BOT", "false").lower() == "true":
+        print("[BOT] Starting Telegram bot thread...")
+        bot_thread = threading.Thread(target=run_bot, daemon=True, name="telegram-bot")
+        bot_thread.start()
+        print("[BOT] Telegram bot thread started.")
+    else:
+        print("[BOT] Bot thread disabled (RUN_BOT != true). Run bot.py separately.")
     yield
-    # Shutdown — nothing to clean up, thread is daemon
 
 
 app = FastAPI(title="School Bot API", version="1.0.0", lifespan=lifespan)
