@@ -3,7 +3,7 @@
  * Communicates with the FastAPI backend at API_BASE.
  */
 
-// When served via the backend (http://localhost:8000), use relative URLs.
+// When served via the backend, use relative URLs (works on any domain).
 // When opening index.html directly as a file, fall back to localhost.
 const API_BASE = window.location.protocol === "file:"
   ? "http://localhost:8000"
