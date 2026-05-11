@@ -9,3 +9,4 @@ python-multipart==0.0.9
 aiofiles==23.2.1
 psycopg2-binary==2.9.9
 python-telegram-bot==21.10
+anyio==4.4.0
