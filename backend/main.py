@@ -1,10 +1,11 @@
 """
 School Bot Backend API
 Handles homework, holidays, subscribers, and broadcast notifications.
+Bot runs as a background thread in the same process.
 """
 import os
 import uuid
-import shutil
+import threading
 import httpx
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -420,6 +421,37 @@ def health():
 @app.head("/health")
 def health_head():
     return {}
+
+
+# ---------------------------------------------------------------------------
+# Start Telegram bot in background thread
+# ---------------------------------------------------------------------------
+
+def run_bot():
+    """Run the Telegram bot in a separate thread alongside the web server."""
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    if not bot_token:
+        print("[BOT] No TELEGRAM_BOT_TOKEN set — bot not started.")
+        return
+
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bot"))
+
+    try:
+        import asyncio
+        import bot as school_bot
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        school_bot.main()
+    except Exception as e:
+        print(f"[BOT] Failed to start: {e}")
+
+
+@app.on_event("startup")
+async def startup_event():
+    bot_thread = threading.Thread(target=run_bot, daemon=True)
+    bot_thread.start()
+    print("[BOT] Telegram bot thread started.")
 
 
 # ---------------------------------------------------------------------------
