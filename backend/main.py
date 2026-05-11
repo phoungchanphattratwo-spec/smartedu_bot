@@ -65,14 +65,34 @@ def run_bot():
         print(f"[BOT] Failed to start: {e}")
 
 
+def keep_alive(url: str):
+    """Ping the health endpoint every 10 minutes to prevent Render free tier spin-down."""
+    import time
+    import httpx as _httpx
+    while True:
+        time.sleep(600)  # 10 minutes
+        try:
+            _httpx.get(f"{url}/health", timeout=10)
+            print("[PING] Keep-alive ping sent.")
+        except Exception as e:
+            print(f"[PING] Ping failed: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Only start bot thread if RUN_BOT=true (disabled by default to avoid conflicts)
+    # Only start bot thread if RUN_BOT=true
     if os.getenv("RUN_BOT", "false").lower() == "true":
         print("[BOT] Starting Telegram bot thread...")
         bot_thread = threading.Thread(target=run_bot, daemon=True, name="telegram-bot")
         bot_thread.start()
         print("[BOT] Telegram bot thread started.")
+
+        # Self-ping every 10 minutes to prevent Render free tier spin-down
+        api_url = os.getenv("API_BASE_URL", "")
+        if api_url:
+            ping_thread = threading.Thread(target=keep_alive, args=(api_url,), daemon=True, name="keep-alive")
+            ping_thread.start()
+            print(f"[PING] Keep-alive started → {api_url}/health")
     else:
         print("[BOT] Bot thread disabled (RUN_BOT != true). Run bot.py separately.")
     yield
